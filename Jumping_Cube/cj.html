@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameArea {
+            width: 100%; /* Ширина 100% для мобильных устройств */
+            height: 400px; /* Фиксированная высота игрового экрана */
+            position: relative;
+            overflow: hidden;
+            background-color: #282c34;
+            margin: 30px auto; /* Центрирование по вертикали и горизонтали */
+            border: 2px solid white; /* Обводка для мини-экрана */
+            max-width: 400px; /* Максимальная ширина для больших экранов */
+        }
+
+        #bird {
+            width: 30px; /* Уменьшенные размеры птицы */
+            height: 30px;
+            background-color: #ff6f61;
+            border-radius: 10px;
+            position: absolute;
+            top: 150px; /* начальная позиция */
+            left: 50px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .pipe {
+            position: absolute;
+            width: 50px; /* Уменьшенная ширина трубы */
+            background-color: green;
+        }
+
+        #score, #highScore {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px; /* Уменьшенный размер текста */
+        }
+
+        #highScore {
+            right: 10px;
+            left: auto; /* Обнуляем значение для правильного позиционирования */
+        }
+
+        @media (max-width: 400px) {
+            #score, #highScore {
+                font-size: 16px; /* Уменьшаем размер текста на мобильных устройствах */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Счет: 0</div>
+    <div id="highScore">Рекорд: 0</div>
+    <div id="gameArea">
+        <div id="bird"></div>
+    </div>
+    <script>
+        const gameArea = document.getElementById("gameArea");
+        const bird = document.getElementById("bird");
+        const scoreDisplay = document.getElementById("score");
+        const highScoreDisplay = document.getElementById("highScore");
+        let birdY = 150; // Начальная позиция птицы
+        let gravity = 2;
+        let isGameOver = false;
+        let pipeInterval;
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+
+        highScoreDisplay.textContent = `Рекорд: ${highScore}`;
+
+        // Управление при нажатии на экран
+        document.addEventListener("touchstart", () => {
+            if (!isGameOver) {
+                birdY -= 40; // Подъем птицы
+                bird.style.top = birdY + "px";
+            }
+        });
+
+        function startGame() {
+            pipeInterval = setInterval(createPipe, 2000);
+            const gameLoop = setInterval(() => {
+                if (!isGameOver) {
+                    birdY += gravity; // Гравитация
+                    bird.style.top = birdY + "px";
+
+                    // Проверка выхода за границы игрового поля
+                    if (birdY + bird.clientHeight >= gameArea.clientHeight || birdY <= 0) {
+                        gameOver();
+                    }
+                }
+            }, 20);
+        }
+
+        function createPipe() {
+            const pipeHeight = Math.random() * (300 - 100) + 100; // Высота трубы
+            const pipe = document.createElement("div");
+            pipe.className = "pipe";
+            pipe.style.height = pipeHeight + "px";
+            pipe.style.left = "400px";
+            pipe.style.top = "0"; // Верхняя труба начинается сверху
+            gameArea.appendChild(pipe);
+
+            const pipeBottom = document.createElement("div");
+            pipeBottom.className = "pipe";
+            pipeBottom.style.height = (gameArea.clientHeight - pipeHeight - 150) + "px"; // Нижняя труба
+            pipeBottom.style.left = "400px";
+            pipeBottom.style.bottom = "0";
+            gameArea.appendChild(pipeBottom);
+
+            const movePipe = setInterval(() => {
+                if (!isGameOver) {
+                    const pipeLeft = parseInt(pipe.style.left);
+                    if (pipeLeft < -60) {
+                        clearInterval(movePipe);
+                        gameArea.removeChild(pipe);
+                        gameArea.removeChild(pipeBottom);
+                    } else {
+                        pipe.style.left = pipeLeft - 2 + "px";
+                        pipeBottom.style.left = pipeLeft - 2 + "px";
+                        checkCollision(pipe, pipeBottom);
+                        updateScore(pipeLeft);
+                    }
+                } else {
+                    clearInterval(movePipe);
+                }
+            }, 20);
+        }
+
+        function checkCollision(pipe, pipeBottom) {
+            const pipeRect = pipe.getBoundingClientRect();
+            const birdRect = bird.getBoundingClientRect();
+            const pipeBottomRect = pipeBottom.getBoundingClientRect();
+
+            // Мягкая проверка коллизий, с небольшим отступом
+            if (
+                birdRect.right > pipeRect.left + 5 && 
+                birdRect.left < pipeRect.right - 5 && 
+                (birdRect.top < pipeRect.bottom - 5 || birdRect.bottom > pipeBottomRect.top + 5)
+            ) {
+                gameOver();
+            }
+        }
+
+        function updateScore(pipeLeft) {
+            // Увеличение счета, когда птица проходит мимо трубы
+            if (pipeLeft === 50) {
+                score++;
+                scoreDisplay.textContent = `Счет: ${score}`;
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            clearInterval(pipeInterval);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreDisplay.textContent = `Рекорд: ${highScore}`;
+            }
+            alert(`Игра окончена! Ваш счёт: ${score}`);
+            document.location.reload();
+        }
+
+        startGame();
+    </script>
+</body>
+</html>
